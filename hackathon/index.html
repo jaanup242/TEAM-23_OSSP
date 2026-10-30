@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MemTrace – Virtual Memory & TLB Analyzer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#f0f2f6;--panel:#fff;--ink:#14213a;--mute:#5d6b85;--line:#d5dbe6;--pg:#7aa2ff;--of:#ffb454;--fr:#5eead4;
+--hit:#0a7a6c;--hitbg:#d6f2ec;--miss:#a86300;--missbg:#fdeccb;--bad:#b3261e;--badbg:#fadcd9;--hero:#0e1a30}
+@media(prefers-color-scheme:dark){:root{--bg:#0a111f;--panel:#121c31;--ink:#e4eaf6;--mute:#8e9bb5;--line:#26334f;
+--hit:#5eead4;--hitbg:#12403d;--miss:#ffb454;--missbg:#4a3310;--bad:#ff8f86;--badbg:#4d211e;--hero:#060c18}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Bricolage Grotesque",system-ui,sans-serif}
+.m,td,input,textarea,select,pre{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px 48px}
+header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;padding:26px 0 18px}
+h1{margin:0;font-size:clamp(34px,6vw,56px);font-weight:800;letter-spacing:-.04em;line-height:1}
+header p{margin:6px 0 0;color:var(--mute)}
+#status{font:500 12px "IBM Plex Mono",monospace;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--panel)}
+#status.ok{color:var(--hit);border-color:var(--hit)}#status.no{color:var(--bad);border-color:var(--bad)}
+.layout{display:grid;grid-template-columns:310px 1fr;gap:22px}
+@media(max-width:880px){.layout{grid-template-columns:1fr}}
+aside{align-self:start}
+h2{font-size:15px;font-weight:600;margin:22px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+aside h2:first-child{margin-top:0}
+label{display:block;font-size:12px;color:var(--mute);margin:10px 0 3px}
+input,textarea,select{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font-size:13px}
+textarea{resize:vertical;min-height:64px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button{font:600 14px "Bricolage Grotesque",sans-serif;padding:8px 14px;border-radius:6px;border:1px solid var(--ink);background:transparent;color:var(--ink);cursor:pointer}
+button.p{background:var(--ink);color:var(--bg)}button:disabled{opacity:.35;cursor:default}
+:focus-visible{outline:2px solid var(--pg);outline-offset:2px}
+.err{color:var(--bad);font-size:13px;min-height:20px;margin:8px 0 0}
+.hero{background:var(--hero);color:#e8eefc;border-radius:16px;padding:22px 24px}
+.hero .cap{font-size:12px;color:#8fa0c4}
+.addr{display:flex;align-items:flex-start;gap:3px;margin:6px 0 4px;flex-wrap:wrap}
+.seg b{display:block;font:600 clamp(18px,3.2vw,30px)/1.3 "IBM Plex Mono",monospace;letter-spacing:.06em;padding:4px 10px;border-radius:6px;word-break:break-all}
+.seg small{display:block;font:500 12px "IBM Plex Mono",monospace;padding:3px 10px;color:#8fa0c4}
+.pg b{background:#1b2d57;color:var(--pg)}.of b{background:#4a3310;color:var(--of)}.fr b{background:#0f3b3a;color:var(--fr)}
+.pg small{color:var(--pg)}.of small{color:var(--of)}.fr small{color:var(--fr)}
+.flow{font:12px "IBM Plex Mono",monospace;color:#8fa0c4;margin:8px 0;padding-left:10px;border-left:2px solid #2a3a60}
+.verdict{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.tag{padding:2px 10px;border-radius:99px;font:600 12px "IBM Plex Mono",monospace}
+.HIT{background:var(--hitbg);color:var(--hit)}.MISS{background:var(--missbg);color:var(--miss)}.FAULT,.INVALID{background:var(--badbg);color:var(--bad)}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin-top:6px}
+@media(max-width:880px){.three{grid-template-columns:1fr}}
+.slot,.pte,.fcell{border:1px solid var(--line);border-radius:6px;padding:5px 9px;font:12px "IBM Plex Mono",monospace;background:var(--panel);color:var(--mute)}
+.slot{display:flex;justify-content:space-between;margin-bottom:5px}.slot.e{border-style:dashed}
+.slot.f,.pte.cur,.fcell.cur{border-color:var(--hit);background:var(--hitbg);color:var(--ink);font-weight:600}
+.slot.next::after{content:"next out";font-weight:400;color:var(--miss)}
+.pte{display:inline-block;margin:0 5px 5px 0}.pte.walk{border-color:var(--miss);background:var(--missbg);color:var(--ink)}
+.frames{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.fcell{text-align:center;padding:6px 2px}.fcell.used{color:var(--ink);border-color:var(--pg)}
+.note{font-size:12px;color:var(--mute);margin-top:4px}
+.scrub{display:flex;gap:10px;align-items:center;margin:18px 0 8px}.scrub input{padding:0}
+.stats{display:flex;flex-wrap:wrap;gap:6px 28px;margin:10px 0 4px}
+.stats div b{font:600 22px "IBM Plex Mono",monospace;display:block}.stats span{font-size:12px;color:var(--mute)}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:12px}
+th{text-align:left;color:var(--mute);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+tr.cur td{background:var(--hitbg)}tbody tr{cursor:pointer}
+pre{font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;max-height:200px;margin:8px 0 0}
+.empty{color:var(--mute);padding:30px 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div><h1>MemTrace</h1><p>Follow every virtual address through the TLB and page table.</p></div>
+  <div id="status" role="status">Connecting to engine…</div>
+</header>
+<div class="layout">
+<aside>
+  <h2>Configuration</h2>
+  <div class="two">
+    <div><label for="ps">Page size (bytes)</label><select id="ps"><option>256</option><option selected>1024</option><option>4096</option></select></div>
+    <div><label for="np">Virtual pages</label><input id="np" type="number" min="1" max="1024" value="8"></div>
+    <div><label for="cap">TLB entries</label><input id="cap" type="number" min="1" max="64" value="3"></div>
+    <div><label for="pol">Replacement</label><select id="pol"><option>LRU</option><option>FIFO</option></select></div>
+  </div>
+  <label for="pt">Page table (page:frame)</label>
+  <textarea id="pt">0:5, 1:2, 2:7, 3:1, 4:6</textarea>
+  <label for="addr">Virtual addresses (decimal or 0x hex)</label>
+  <textarea id="addr">100, 200, 1100, 100, 2100, 2500, 100, 3300, 1100, 9000</textarea>
+  <div class="err" id="err" role="alert"></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="p" id="run">Run in C engine</button><button id="demo">LRU demo</button></div>
+  <h2>Access-time model</h2>
+  <div class="two"><div><label for="t">TLB lookup (ns)</label><input id="t" type="number" value="10" min="0"></div><div><label for="m">Memory access (ns)</label><input id="m" type="number" value="100" min="1"></div></div>
+  <div class="note">Hit = t + m, miss = t + 2m. Model inputs, not measurements.</div>
+  <h2>Engine tests</h2>
+  <button id="tests">Run C tests</button><pre id="tout" hidden></pre>
+</aside>
+<section>
+  <div id="empty" class="empty">Press <b>Run in C engine</b> to translate the sequence.</div>
+  <div id="stage" hidden>
+    <div class="hero">
+      <div class="cap" id="vcap"></div>
+      <div class="addr" id="vbits"></div>
+      <div class="flow" id="flow"></div>
+      <div class="cap" id="pcap"></div>
+      <div class="addr" id="pbits"></div>
+      <div class="verdict"><span class="tag" id="tag"></span><span id="why"></span></div>
+    </div>
+    <div class="scrub">
+      <button id="prev" aria-label="Previous access">◀</button>
+      <input type="range" id="sl" min="0" max="0" value="0" aria-label="Access number">
+      <button id="next" aria-label="Next access">▶</button>
+      <span class="m" id="pos"></span>
+    </div>
+    <div class="three">
+      <div><h2>TLB</h2><div id="tlb"></div><div class="note" id="tlbn"></div></div>
+      <div><h2>Page table</h2><div id="ptv"></div></div>
+      <div><h2>Physical memory</h2><div class="frames" id="mem"></div></div>
+    </div>
+    <h2>Totals so far</h2>
+    <div class="stats" id="stats"></div><div class="note" id="eat"></div>
+    <h2>Trace</h2>
+    <div class="tw"><table><thead><tr><th>#</th><th>Virtual</th><th>Page</th><th>Offset</th><th>Result</th><th>Frame</th><th>Physical</th><th>Evicted</th></tr></thead><tbody id="trace"></tbody></table></div>
+  </div>
+</section>
+</div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let R=null,cfg=null,cur=0;
+const lg=n=>Math.max(1,Math.ceil(Math.log2(n))),bin=(n,w)=>n.toString(2).padStart(w,"0");
+
+async function api(path,body){
+  const r=await fetch(path,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:{});
+  return r.json();
+}
+async function init(){
+  try{
+    const i=await api("/api/info"),s=$("status");
+    s.className=i.engine?"ok":"no";
+    s.textContent=i.engine?`C engine · ${i.os} · kernel ${i.kernel}`:`${i.os}: engine not built. Run make`;
+  }catch{ $("status").className="no";$("status").textContent="Server offline. Run make run"; }
+}
+function tokens(t){return t.split(/[\s,;]+/).filter(Boolean);}
+function readForm(){
+  const np=+$("np").value,map=[];
+  for(const tk of tokens($("pt").value)){
+    const m=tk.match(/^(\d+):(\d+)$/);
+    if(!m)throw new Error(`Bad page-table entry “${tk}”. Use page:frame, like 2:7.`);
+    map.push([+m[1],+m[2]]);
+  }
+  const accesses=tokens($("addr").value).map(tk=>{
+    const v=/^0x[0-9a-f]+$/i.test(tk)?parseInt(tk,16):/^-?\d+$/.test(tk)?parseInt(tk,10):NaN;
+    if(Number.isNaN(v))throw new Error(`“${tk}” is not a number.`);return v;});
+  return{pageSize:+$("ps").value,pages:np,tlb:+$("cap").value,policy:$("pol").value,map,accesses};
+}
+async function run(){
+  $("err").textContent="";
+  try{
+    cfg=readForm();
+    const d=await api("/api/simulate",cfg);
+    if(d.error)throw new Error(d.error);
+    R=d;cur=R.steps.length-1;
+    $("empty").hidden=true;$("stage").hidden=false;
+    $("sl").max=cur;
+    $("trace").innerHTML=R.steps.map((s,i)=>{const c=v=>v<0?"–":v;
+      return`<tr data-i="${i}"><td>${i+1}</td><td>${s.va}</td><td>${c(s.page)}</td><td>${c(s.offset)}</td><td><span class="tag ${s.result}">${s.result}</span></td><td>${c(s.frame)}</td><td>${c(s.pa)}</td><td>${s.evicted<0?"–":"page "+s.evicted}</td></tr>`}).join("");
+    render();
+  }catch(e){$("err").textContent=e.message;}
+}
+function seg(cls,bits,label){return`<div class="seg ${cls}"><b>${bits}</b><small>${label}</small></div>`;}
+function render(){
+  const s=R.steps[cur],ps=cfg.pageSize,ob=Math.log2(ps),tb=lg(cfg.pages*ps),pb=Math.max(1,tb-ob);
+  const maxF=Math.max(...cfg.map.map(p=>p[1]),0),fb=lg(maxF+1);
+  $("vcap").textContent=`Virtual address ${s.va}`;
+  if(s.page>=0){
+    $("vbits").innerHTML=seg("pg",bin(s.page,pb),`page ${s.page}`)+seg("of",bin(s.offset,ob),`offset ${s.offset}`);
+    $("flow").textContent=`page = ${s.va} ÷ ${ps} = ${s.page}   ·   offset = ${s.va} mod ${ps} = ${s.offset}`;
+  }else{
+    $("vbits").innerHTML=seg("of",s.va<0?"negative":bin(s.va,tb+1),"outside the address space");
+    $("flow").textContent=`Valid addresses are 0 to ${ps*cfg.pages-1}.`;
+  }
+  if(s.pa>=0){
+    $("pcap").textContent=`Physical address ${s.pa}   (${s.frame} × ${ps} + ${s.offset})`;
+    $("pbits").innerHTML=seg("fr",bin(s.frame,fb),`frame ${s.frame}`)+seg("of",bin(s.offset,ob),"offset unchanged");
+  }else{$("pcap").textContent="Physical address";$("pbits").innerHTML=seg("of","none",s.result==="FAULT"?"page not mapped":"rejected");}
+  $("tag").className="tag "+s.result;$("tag").textContent=s.result;
+  $("why").textContent={HIT:`Page ${s.page} was cached, so the page table was not read.`,
+    MISS:`Page table read, frame ${s.frame} cached in the TLB`+(s.evicted>=0?`, replacing page ${s.evicted}.`:"."),
+    FAULT:`Page ${s.page} has no mapping. Nothing was cached.`,INVALID:"Address rejected before translation."}[s.result];
+  $("sl").value=cur;$("pos").textContent=`${cur+1} / ${R.steps.length}`;
+  $("prev").disabled=cur===0;$("next").disabled=cur===R.steps.length-1;
+  let h="";
+  for(let i=0;i<cfg.tlb;i++){const e=s.tlb[i];
+    h+=e?`<div class="slot f ${i===0&&s.tlb.length===cfg.tlb?"next":""}"><span>page ${e[0]}</span><span>→ frame ${e[1]}</span></div>`:`<div class="slot e">empty</div>`;}
+  $("tlb").innerHTML=h;$("tlbn").textContent=`${cfg.policy}: top entry is evicted first.`;
+  $("ptv").innerHTML=[...cfg.map].sort((a,b)=>a[0]-b[0]).map(([p,f])=>`<span class="pte ${p===s.page?(s.result==="MISS"?"cur walk":"cur"):""}">${p}→${f}</span>`).join("")||"No mappings";
+  const nf=Math.max(8,maxF+1);let m="";
+  for(let f=0;f<nf;f++){const pg=cfg.map.find(p=>p[1]===f);
+    m+=`<div class="fcell ${pg?"used":""} ${f===s.frame?"cur":""}">${f}<br>${pg?"p"+pg[0]:"free"}</div>`;}
+  $("mem").innerHTML=m;
+  const sl=R.steps.slice(0,cur+1),n=r=>sl.filter(x=>x.result===r).length,hit=n("HIT"),mis=n("MISS"),v=hit+mis,hr=v?hit/v:0;
+  $("stats").innerHTML=[["hits",hit],["misses",mis],["page faults",n("FAULT")],["rejected",n("INVALID")],["hit ratio",v?(hr*100).toFixed(1)+"%":"–"]].map(([k,x])=>`<div><b>${x}</b><span>${k}</span></div>`).join("");
+  const t=+$("t").value||0,mm=+$("m").value||1,eat=hr*(t+mm)+(1-hr)*(t+2*mm);
+  $("eat").textContent=v?`Modeled access time ${eat.toFixed(1)} ns with TLB vs ${2*mm} ns without (${((1-eat/(2*mm))*100).toFixed(1)}% lower).`:"No translated accesses yet.";
+  [...$("trace").children].forEach((tr,i)=>tr.className=i===cur?"cur":"");
+}
+const go=i=>{if(R){cur=Math.min(Math.max(i,0),R.steps.length-1);render();}};
+$("run").onclick=run;$("prev").onclick=()=>go(cur-1);$("next").onclick=()=>go(cur+1);
+$("sl").oninput=e=>go(+e.target.value);
+$("trace").onclick=e=>{const tr=e.target.closest("tr");if(tr)go(+tr.dataset.i);};
+$("t").oninput=$("m").oninput=()=>R&&render();
+document.addEventListener("keydown",e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)&&e.target.id!=="sl")return;
+  if(e.key==="ArrowLeft")go(cur-1);if(e.key==="ArrowRight")go(cur+1);});
+$("demo").onclick=()=>{$("ps").value="1024";$("np").value=8;$("cap").value=2;$("pol").value="LRU";$("pt").value="0:5, 1:2, 2:7";$("addr").value="0, 1024, 0, 2048, 1024";run();};
+$("tests").onclick=async()=>{const o=$("tout");o.hidden=false;o.textContent="Running…";
+  try{const d=await api("/api/test",{});o.textContent=d.error||d.output;}catch{o.textContent="Server offline.";}};
+init();
+</script>
+</body>
+</html>
