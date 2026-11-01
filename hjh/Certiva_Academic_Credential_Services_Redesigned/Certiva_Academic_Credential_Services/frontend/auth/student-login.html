@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Student Login — Certiva</title><link rel="stylesheet" href="/style.css"></head>
+<body class="auth-page">
+<div class="auth-shell">
+  <section class="auth-visual student-visual"><div class="visual-copy"><div class="eyebrow">STUDENT PORTAL</div><h2>Your credentials, one secure place.</h2><p>Request academic certificates, follow their progress and keep your documentation organized through Certiva.</p></div></section>
+  <section class="auth-panel"><div class="auth-top"><a class="logo" href="/"><span class="logo-mark">◆</span>Certiva</a><a class="back" href="/">← Back to home</a></div><main class="auth-wrap"><div class="auth-card"><div class="eyebrow">STUDENT ACCESS</div><h1>Welcome back.</h1><p>Sign in to request and track your academic certificates.</p><form id="f"><label class="field">Roll Number<input id="r" autocomplete="username" required></label><label class="field">Password<input id="p" type="password" autocomplete="current-password" required></label><div id="e" class="error"></div><button class="btn gold full">Sign In →</button></form><div class="demo"><b>Demo account</b><br>2520030441 / student123</div></div></main></section>
+</div>
+<script>f.onsubmit=async e=>{e.preventDefault();const x=await fetch('/api/login/student',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roll_no:r.value,password:p.value})});const j=await x.json();if(x.ok)location='/student';else document.querySelector('#e').textContent=j.error||'Login failed.'}</script>
+</body></html>
