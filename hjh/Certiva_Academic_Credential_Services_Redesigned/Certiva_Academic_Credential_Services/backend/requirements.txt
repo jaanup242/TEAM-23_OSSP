@@ -1,2 +1,0 @@
-Flask>=3,<4
-flask-cors>=4,<7
