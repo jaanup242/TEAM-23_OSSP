@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Student Dashboard — Certiva</title><link rel="stylesheet" href="/style.css"></head>
+<body class="dashboard-body">
+<header class="dash-nav"><a class="logo" href="/"><span class="logo-mark">◆</span>Certiva</a><div class="dash-user"><span>Student · Jaahnavi</span><button onclick="logout()">Logout</button></div></header>
+<div class="dash-layout"><aside class="side"><div class="side-title">STUDENT PORTAL</div><a class="active" href="/student">⌂ Dashboard</a><a href="/student/apply">＋ Apply for Certificate</a><a href="#requests">▤ My Requests</a><a href="#track">⌕ Track Request</a><a href="#profile">◎ Profile</a></aside>
+<main class="dash-main"><div class="dash-head"><div class="eyebrow">STUDENT DASHBOARD</div><h1>Welcome back, <span id="name">Jaahnavi</span> 👋</h1><p>Your academic credentials, organized in one place.</p></div>
+<div class="apply-hero"><div><div class="eyebrow">NEW REQUEST</div><h2>Need an academic certificate?</h2><p>Choose the certificate you need, tell us why you need it, and submit your request in a few simple steps.</p></div><a class="btn gold" href="/student/apply">Apply for Certificate →</a></div>
+<div class="cards"><div class="metric"><small>Total Requests</small><strong id="t">0</strong></div><div class="metric"><small>Pending</small><strong id="p">0</strong></div><div class="metric"><small>Processing</small><strong id="pr">0</strong></div><div class="metric"><small>Completed</small><strong id="c">0</strong></div></div>
+<section id="requests" class="panel"><div class="panel-head"><h2>My Recent Requests</h2><a class="btn outline" href="/student/apply">＋ New Request</a></div><div id="table"></div></section>
+<section id="track" class="panel"><h2>Track a Request</h2><p class="hint">Enter your request ID to view its current status.</p><div style="display:flex;gap:10px;max-width:650px"><input class="dark-input" id="id" placeholder="CERT-2026-0001"><button class="btn gold" onclick="track()">Track</button></div><div id="tr"></div></section>
+</main></div><script src="/student/student.js"></script></body></html>

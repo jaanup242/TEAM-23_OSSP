@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin Login — Certiva</title><link rel="stylesheet" href="/style.css"></head>
+<body class="auth-page">
+<div class="auth-shell">
+  <section class="auth-visual admin-visual"><div class="visual-copy"><div class="eyebrow">ADMINISTRATION PORTAL</div><h2>Manage credentials with clarity.</h2><p>Review incoming certificate requests, process the queue and monitor the Producer–Consumer synchronization system.</p></div></section>
+  <section class="auth-panel"><div class="auth-top"><a class="logo" href="/"><span class="logo-mark">◆</span>Certiva</a><a class="back" href="/">← Back to home</a></div><main class="auth-wrap"><div class="auth-card"><div class="eyebrow">ADMIN ACCESS</div><h1>Administration.</h1><p>Sign in to review and process credential requests.</p><form id="f"><label class="field">Username<input id="u" autocomplete="username" required></label><label class="field">Password<input id="p" type="password" autocomplete="current-password" required></label><div id="e" class="error"></div><button class="btn gold full">Admin Sign In →</button></form><div class="demo"><b>Demo account</b><br>admin / admin123</div></div></main></section>
+</div>
+<script>f.onsubmit=async e=>{e.preventDefault();const x=await fetch('/api/login/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u.value,password:p.value})});const j=await x.json();if(x.ok)location='/admin';else document.querySelector('#e').textContent=j.error||'Login failed.'}</script>
+</body></html>
